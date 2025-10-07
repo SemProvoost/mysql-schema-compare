@@ -215,6 +215,9 @@ function getModifyStatement(tableName, column, oldTable, newTable){
     if(oldValue.toLowerCase() == newValue.toLowerCase()){
         return [null, null];
     }
+    if(isEqualBasedOnSynonyms(oldValue, newValue)){
+        return [null, null];
+    }
 
     const oldValueWithoutWhiteSpaceAndQuotes = oldValue.replace(/['"`]/g, '').replace(/ /g, '');
     const newValueWithoutWhiteSpaceAndQuotes = newValue.replace(/['"`]/g, '').replace(/ /g, '');
@@ -278,6 +281,34 @@ function getModifyStatement(tableName, column, oldTable, newTable){
         modifyStatement,
         debugValue,
     ]
+}
+
+function isEqualBasedOnSynonyms(oldValue, newValue) {
+
+    let oldValueFormatted = oldValue.toLowerCase();
+    let newValueFormatted = newValue.toLowerCase();
+
+    // remove column comments
+    oldValueFormatted = oldValueFormatted.split(' comment ')[0]
+    newValueFormatted = newValueFormatted.split(' comment ')[0]
+
+    // remove quotes and spaces
+    oldValueFormatted = oldValueFormatted.replace(/['"`]/g, '').replace(/ /g, '');
+    newValueFormatted = newValueFormatted.replace(/['"`]/g, '').replace(/ /g, '');
+
+    const synonymGroups = [
+        ['tinyint(1)defaultnull', 'booleandefaultnull'],
+        ['tinyint(1)default0', 'booleandefault0', 'booleandefaultfalse'],
+        ['tinyint(1)notnull', 'booleannotnull'],
+        ['tinyint(1)notnulldefault0', 'booleannotnulldefaultfalse', 'booleannotnulldefault0'],
+        ['tinyint(1)notnulldefault1', 'booleannotnulldefaulttrue', 'booleannotnulldefault1'],
+    ]
+    for(const synonymGroup of synonymGroups){
+        if(synonymGroup.includes(oldValueFormatted) && synonymGroup.includes(newValueFormatted)){
+            return true;
+        }
+    }
+    return false;
 }
 
 function getAlterKeysStatement(tableName, indexesToAdd, indexesToDrop) {
