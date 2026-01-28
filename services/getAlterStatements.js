@@ -207,10 +207,10 @@ function getModifyStatement(tableName, column, oldTable, newTable){
     // remove all double spaces that are NOT inside quotes
     oldValue = oldValue.split("'").map((part, i) => i % 2 === 0 ? part.replace(/  +/g, ' ') : part).join("'").trim();
     oldValue = oldValue.split("`").map((part, i) => i % 2 === 0 ? part.replace(/  +/g, ' ') : part).join("`").trim();
-    oldValue = oldValue.replace('int(11)', 'int').replace('INT(11)', 'INT').replace(`'0.0'`, `'0`);
+    oldValue = oldValue.replace('int(11)', 'int').replace('INT(11)', 'INT').replace(`'0.0'`, `'0`).replace('NULL DEFAULT NULL', 'DEFAULT NULL');
     newValue = newValue.split("'").map((part, i) => i % 2 === 0 ? part.replace(/  +/g, ' ') : part).join("'").trim();
     newValue = newValue.split("`").map((part, i) => i % 2 === 0 ? part.replace(/  +/g, ' ') : part).join("`").trim();
-    newValue = newValue.replace('int(11)', 'int').replace('INT(11)', 'INT').replace(`'0.0'`, `'0`);
+    newValue = newValue.replace('int(11)', 'int').replace('INT(11)', 'INT').replace(`'0.0'`, `'0`).replace('NULL DEFAULT NULL', 'DEFAULT NULL');
 
     if(oldValue.toLowerCase() == newValue.toLowerCase()){
         return [null, null];
