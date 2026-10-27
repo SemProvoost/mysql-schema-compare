@@ -1,6 +1,7 @@
 const fs = require('fs');
 const getIndexesFromAlterRows = require('./indexes/getIndexesFromAlterRows');
 const { findIdenticalIndex } = require('./indexes/indexDiffs');
+const parseEnum = require('./parseEnum');
 
 module.exports = async function getAlterStatements(oldSchema, newSchema) {
 
@@ -245,15 +246,8 @@ function getModifyStatement(tableName, column, oldTable, newTable){
     let modifyStatement = '';
     if(oldValue.toLowerCase().trim().startsWith('enum') && newValue.toLowerCase().trim().startsWith('enum')){
 
-        if(oldValue.split('(').length !== 2 || newValue.split('(').length !== 2){
-            throw new Error('Cannot parse ENUM');
-        }
-        if(oldValue.split(')').length !== 2 || newValue.split(')').length !== 2){
-            throw new Error('Cannot parse ENUM');
-        }
-
-        const [oldInbetweenEnum, oldAfterEnum] = oldValue.split('(')[1].split(')');
-        const [newInbetweenEnum, newAfterEnum] = newValue.split('(')[1].split(')');
+        const [oldInbetweenEnum, oldAfterEnum] = parseEnum(oldValue);
+        const [newInbetweenEnum, newAfterEnum] = parseEnum(newValue);
         const oldEnumValues = oldInbetweenEnum.split("'").filter((_, i) => i % 2 === 1);
         const newEnumValues = newInbetweenEnum.split("'").filter((_, i) => i % 2 === 1);
 
