@@ -32,7 +32,7 @@ module.exports = async function getAlterStatements(oldSchema, newSchema) {
                 alterStatements.push(`ALTER TABLE \`${tableName}\` ADD \`${column}\` ${newTable[column]} AFTER \`${Object.keys(oldTable).pop()}\`;`);
             }
             else {
-                const [modifyStatement, debugValue] = getModifyStatement(tableName, column, oldTable, newTable);
+                const [modifyStatement, debugValue] = getModifyStatement(tableName, column, oldTable, newTable, newSchemaJson[tableName]?.['autoIncrementColumns']);
                 if(modifyStatement){
                     modifyStatements.push(modifyStatement);
                 }
@@ -169,12 +169,24 @@ function schemaToJson(schema){
         Object.entries(schemaJson).map(([tableName, tableData]) => {
             const alterRows = tableData.alterRows || [];
             tableData.indexes = getIndexesFromAlterRows(alterRows);
+            tableData.autoIncrementColumns = getAutoIncrementColumnsFromAlterRows(alterRows);
 
             return [tableName, tableData];
         })
     )
 
     return schemaJsonWithKeys;
+}
+
+function getAutoIncrementColumnsFromAlterRows(alterRows){
+    const columns = [];
+    for(const row of alterRows){
+        const match = row.match(/MODIFY\s+`(\w+)`[^;]*\bAUTO_INCREMENT\b/i);
+        if(match){
+            columns.push(match[1]);
+        }
+    }
+    return columns;
 }
 
 function createTable(tableName, newTableAlterRows, newTable){
@@ -201,7 +213,7 @@ function createTable(tableName, newTableAlterRows, newTable){
     return createStatements.join('\n');
 }
 
-function getModifyStatement(tableName, column, oldTable, newTable){
+function getModifyStatement(tableName, column, oldTable, newTable, autoIncrementColumns = []){
     let oldValue = oldTable[column].trim();
     let newValue = newTable[column].trim();
 
@@ -262,7 +274,10 @@ function getModifyStatement(tableName, column, oldTable, newTable){
         const enumValuesStr = [...new Set([...oldEnumValues, ...newEnumValues])].map(value => `'${value}'`).join(',');
         modifyStatement = `ALTER TABLE \`${tableName}\` MODIFY \`${column}\` ENUM(${enumValuesStr})${newAfterEnum};`;
     }else{
-        modifyStatement = `ALTER TABLE \`${tableName}\` MODIFY \`${column}\` ${newTable[column]};`;
+        // a mysql dump declares AUTO_INCREMENT in a separate ALTER TABLE ... MODIFY, so it is missing from the
+        // column definition. Keep it, otherwise this MODIFY silently removes AUTO_INCREMENT from the column.
+        const autoIncrement = autoIncrementColumns.includes(column) && !/\bAUTO_INCREMENT\b/i.test(newTable[column]) ? ' AUTO_INCREMENT' : '';
+        modifyStatement = `ALTER TABLE \`${tableName}\` MODIFY \`${column}\` ${newTable[column]}${autoIncrement};`;
     }
 
 
